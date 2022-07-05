@@ -1,0 +1,49 @@
+//Inputs
+// 1. Source Train
+// 2. Destination Train
+// 3. Start Time
+
+// Outputs
+// 1. Total Travel Time
+// 2. Routes Taken
+
+//Constants
+// Peak hours (6am-9am and 6pm-9pm on Mon-Fri)
+// 	NS and NE lines take 12 minutes per station
+// 	All other train lines take 10 minutes
+// 	Every train line change adds 15 minutes of waiting time to the journey
+
+// Night hours (10pm-6am on Mon-Sun)
+// 	DT, CG and CE lines do not operate
+// 	TE line takes 8 minutes per stop
+// 	All trains take 10 minutes per stop
+// 	Every train line change adds 10 minutes of waiting time to the journey
+
+// Non-Peak hours (all other times)
+// 	DT and TE lines take 8 minutes per stop
+// 	All trains take 10 minutes per stop
+// 	Every train line change adds 10 minutes of waiting time to the journey
+
+// To Do:
+// READMD.MD
+// Test Cases
+
+// Choice 
+// API --  Need to expose the endpoint and accept .csv
+// Web App  --  Too long to develop
+// CMD -- Fastest
+
+//Calculate additional time per trainline change as this does not differe per station can be done at end of traversal
+//Adjancey matrix need to be recalculated per hop due to time difference per train line.
+
+//Steps
+//1. Parse the  csv file.
+//2. Remove stations in the adjacency matrix if start time is less than opening date
+//3. Create a map of stations if the map.has(station) once passed through add addtional value to indicacte that it is a station
+//4. Create constants of times for waiting time between interchanges 
+//5. Create the adjacemcy matrix base on proximity between vertices(train) stations. Train stations have nodes
+    //Check if this is an interchange that can be     
+    //Check if the previous and next station are on the same line
+    //Additional check if this is the first/last startion by using station code
+    //To factor in the time difference between when travelling between peak, non-peak and night hours. Matrix must be recalculated again
+//6. Create edge

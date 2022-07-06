@@ -3,10 +3,10 @@ const path = require('path');
 const csv = require('fast-csv');
 const moment = require('moment')
 
-//TODO: Create Djkstra algorithm and route person without startDateTime factors
-//TODO: Find route from start to end destination
 //TODO: Change argument to locations instead of traincode
-//TODO: Write conditions to remove the weight if starting from a wrong station
+//TODO: Refactor Code
+//TODO: Add postitive and negative test cases
+
 
 const trainMap = new Map()
 const interMap = new Map()
@@ -41,8 +41,6 @@ function readCSV(){
         // console.log(row)
     })
     .on('end', rowCount => {
-        console.log(`Total amount of train stations amount to ${rowCount}`)
-        console.log(`Total amount of interchanges amount to ${interMap.size}`)
         currentVertices = rowCount
         // console.log(trainCodeList)
         resolve(rowCount)
@@ -114,16 +112,60 @@ function minDistance(dist,sptSet)
 	return min_index;
 }
 
+// Function that implements Dijkstra's
+// single source shortest path algorithm
+// for a graph represented using adjacency
+// matrix representation
+function dijkstra(graph, source,target,V)
+{
+    src = trainCodeList.indexOf(source)
+    trgt = trainCodeList.indexOf(target)
+    dist = new Array(V);
+	let sptSet = new Array(V);
+	
+	// Initialize all distances as
+	// INFINITE and stpSet[] as false
+	for(let i = 0; i < V; i++)
+	{
+		dist[i] = Number.MAX_VALUE;
+		sptSet[i] = false;
+	}
+	
+	// Distance of source vertex
+	// from itself is always 0
+    parents[src] = -1
+	dist[src] = 0;
+	minDistanceFound = false
+	// Find shortest path for all vertices
+	for(let count = 0; count < V - 1 && !minDistanceFound; count++){
+		
+		// Pick the minimum distance vertex from the set of vertices not yet processed. u is always equal to src in first iteration.
+		let u = minDistance(dist, sptSet);
+		// Mark the picked vertex as processed
+		sptSet[u] = true;
+		
+		// Update dist value of the adjacent vertices of the picked vertex.
+		for(let v = 0; v < V; v++){
+			// Update dist[v] only if is not in sptSet, there is an edge from u to v, and total weight of path from src to v through u is smaller than current value of dist[v]
+			if (!sptSet[v] && graph[u][v] != 0 && dist[u] != Number.MAX_VALUE && dist[u] + graph[u][v] < dist[v]){
+                parents[v] = u
+				dist[v] = dist[u] + graph[u][v];
+			}
+		}
+	}
+	// Print the constructed distance array
+	printSolution(dist,src,trgt);
+}
+
 // A utility function to print
 // the constructed distance array
 function printSolution(dist,src,target)
 {
+    console.log(`\nTrain from ${trainName[src]} to ${trainName[target]}`)
     timeTaken = dist[target]
-	console.log("Train \t\t\t\t Distance from Source \t\t\t Path");
-    process.stdout.write(trainName[target]+ "\t\t\t\t"+dist[target]+"\t\t\t\t")
+	console.log("Path");
     getPath(target,parents)
-    console.log(`\nTrain from ${trainName[src]} to ${trainName[target]} takes ${timeTaken} mins minimally`)
-    console.log("\b")
+    console.log('\n')
 }
 
 function getPath(currentVertex,parents,){
@@ -161,14 +203,13 @@ function printPath(pathList){
 }
 
 //Utility function to calculate the time from src to destination station factoring peak/off-peak and night trains
-function calculatimeTimeTaken(pathList,srcTime){
+function calculatimeTimeTaken(pathList,srcTime,){
     let pathLength = pathList.length
     let lastIndexPathList = pathLength - 1
-    let currentTime = srcTime
     let actualTimeTaken = 0
     let timeFormat = 'HH:mm'
-    let iteration = 0
     let noRouteFound = false
+    var currentTime = moment(srcTime,timeFormat)
     // || noRouteFound == false
 
     if(trainName[pathList[lastIndexPathList]] == trainName[pathList[lastIndexPathList-1]]){
@@ -182,121 +223,76 @@ function calculatimeTimeTaken(pathList,srcTime){
         let currentTrain = trainName[currentStation]
         let nextTrainCodeLetters = trainCodeList[nextStation].slice(0,2)
         let nextTrain = trainName[nextStation]
-
+        
         let dayOfWeek = currentTime.day()
         let currentHour = currentTime.hour()
-
-        switch(true){
             //Peak Period Case
-            case (currentTime.isBetween(moment('06:00',timeFormat),moment('09:00',timeFormat)) || currentTime.isBetween(moment('18:00',timeFormat),moment('21:00',timeFormat)) && (dayOfWeek !== 6) || (dayOfWeek  !== 0)):{
+            if ((currentTime.isBetween(moment('06:00',timeFormat),moment('09:00',timeFormat)) || currentTime.isBetween(moment('18:00',timeFormat),moment('21:00',timeFormat))) && ((dayOfWeek !== 6) || (dayOfWeek  !== 0))){
                 let peakStations = ['NS','NE']
                 if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && peakStations.includes(currentTrainCodeLetters)){
                     actualTimeTaken += 12
                     currentTime.add(12,'minutes')
-                    break
                 }
                 //Currently going through an interchange
-                if(currentTrain.includes(nextTrain)){
+                else if(currentTrain.includes(nextTrain)){
                     actualTimeTaken += 15
                     currentTime.add(15,'minutes')
-                    break
                 }
-                
+                else{
+                    currentTime.add(10,'minutes')
+                    actualTimeTaken += 10 
+                }
             }
             //Night Period Case
-            case (currentHour > 22) && currentHour < 6:{
-                console.log('Entering night case with hour '+currentHour)
+            else if ((currentHour > 22) && (currentHour < 6)){1
                 let nonNightStations = ['CG','DT','CE']
                 if(nonNightStations.includes(currentTrainCodeLetters)){
-                    // console.log("No Route found to destination")
+                    
+                    
+                    console.log("No Route found to destination")
                     noRouteFound =true 
-                    break
+                    
                 }
-                if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && currentTrainCodeLetters.includes('TE')){
+                else if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && currentTrainCodeLetters.includes('TE')){
                     actualTimeTaken += 8
                     //Minus current time for TE lines in non-peak hours
                     currentTime.add(8,'minutes')
-                    break
+                    
                 }
-                
+                else{
+                    currentTime.add(10,'minutes')
+                    actualTimeTaken += 10 
+                }
             }
             //Non-Peak Period Case
-            default:{
+            else{
                 let noPeakTrainCode = ['DT','TE']
                 //Check if current train station code is the same as next train code letters. Check also with they are DT or TE line
                 if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && noPeakTrainCode.includes(currentTrainCodeLetters)){
-                    console.log('Entering off-peak case with hour '+currentHour)
                     actualTimeTaken += 8
                     currentTime.add(8,'minutes')
-                    break
+                    
                 }else{
                     currentTime.add(10,'minutes')
                     actualTimeTaken += 10 
-                    break
-                }
-                
-                 
-                               
+
+                }                           
             }
-        }
-        console.log("Time:" +currentTime +' Index'+i + " " + actualTimeTaken);
+    
         // (`${i}, time taken passed`)
     }
 
-    return console.log(actualTimeTaken)
+    return console.log(`Time: ${actualTimeTaken} minutes`)
 }
 
-
-// Function that implements Dijkstra's
-// single source shortest path algorithm
-// for a graph represented using adjacency
-// matrix representation
-function dijkstra(graph, src,target,V)
-{
-    dist = new Array(V);
-	let sptSet = new Array(V);
-	
-	// Initialize all distances as
-	// INFINITE and stpSet[] as false
-	for(let i = 0; i < V; i++)
-	{
-		dist[i] = Number.MAX_VALUE;
-		sptSet[i] = false;
-	}
-	
-	// Distance of source vertex
-	// from itself is always 0
-    parents[src] = -1
-	dist[src] = 0;
-	minDistanceFound = false
-	// Find shortest path for all vertices
-	for(let count = 0; count < V - 1 && !minDistanceFound; count++){
-		
-		// Pick the minimum distance vertex from the set of vertices not yet processed. u is always equal to src in first iteration.
-		let u = minDistance(dist, sptSet);
-		// Mark the picked vertex as processed
-		sptSet[u] = true;
-		
-		// Update dist value of the adjacent vertices of the picked vertex.
-		for(let v = 0; v < V; v++){
-			// Update dist[v] only if is not in sptSet, there is an edge from u to v, and total weight of path from src to v through u is smaller than current value of dist[v]
-			if (!sptSet[v] && graph[u][v] != 0 && dist[u] != Number.MAX_VALUE && dist[u] + graph[u][v] < dist[v]){
-                parents[v] = u
-				dist[v] = dist[u] + graph[u][v];
-			}
-		}
-	}
-	// Print the constructed distance array
-	printSolution(dist,src,target);
-}
 
 
 async function driver(){
     await readCSV()
     var matrix =  await createAdjMatrix(166)
-    var timeTaken = await dijkstra(matrix,53,68,166)
+    var timeTaken = await dijkstra(matrix,'CC21','DT14',166)
     printPath(pathListIndex)
-    calculatimeTimeTaken(pathListIndex,moment('2019-01-31T06:00'),150)
+    calculatimeTimeTaken(pathListIndex,'08:00')
 }
 
 driver()

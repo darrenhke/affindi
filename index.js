@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('fast-csv');
+const moment = require('moment')
 
 //TODO: Create Djkstra algorithm and route person without startDateTime factors
 //TODO: Find route from start to end destination
@@ -17,6 +18,7 @@ const pathListIndex = []
 var dist = new Array()
 var currentVertices = 0 
 var timeTaken = 0
+
 
 function readCSV(){
     return new Promise((resolve)=>{
@@ -131,19 +133,23 @@ function getPath(currentVertex,parents,){
     pathListIndex.push(currentVertex)
     getPath(parents[currentVertex],parents)
     process.stdout.write(trainCodeList[currentVertex] +" ")
+
 }
 
 function printPath(pathList){
     let orderedPathList = pathList.reverse()
-    let iteration = 0 
-    while(iteration != orderedPathList.length-1){
-        let currentStation = orderedPathList[iteration]
-        let nextStation = orderedPathList[iteration+1]
+
+    if(trainName[orderedPathList[orderedPathList.length - 1]] == trainName[orderedPathList[orderedPathList.length - 2]]){
+        orderedPathList.pop()
+    }
+
+    for(let i =0; i< orderedPathList.length-1;i++ ){
+        let currentStation = orderedPathList[i]
+        let nextStation = orderedPathList[i+1]
         let currentTrainCodeLetters = trainCodeList[currentStation].slice(0,2)
         let currentTrain = trainName[currentStation]
         let nextTrainCodeLetters = trainCodeList[nextStation].slice(0,2)
         let nextTrain = trainName[nextStation]
-
         
         if(nextTrainCodeLetters == currentTrainCodeLetters){
             console.log(`Take ${currentTrainCodeLetters} from ${currentTrain} to ${nextTrain}`)
@@ -151,72 +157,94 @@ function printPath(pathList){
         if(nextTrainCodeLetters != currentTrainCodeLetters){
             console.log(`Change from ${currentTrainCodeLetters} line to ${nextTrainCodeLetters} line`)
         }
-        
-        iteration++
     }   
 }
 
 //Utility function to calculate the time from src to destination station factoring peak/off-peak and night trains
-// function calculatimeTimeTaken(pathList,srcTime,timeTaken){
-//     let orderedPathList = pathList.reverse()
-//     let currentTime = srcTime
-//     let iteration = 0
-//     let noRouteFound = false
+function calculatimeTimeTaken(pathList,srcTime){
+    let pathLength = pathList.length
+    let lastIndexPathList = pathLength - 1
+    let currentTime = srcTime
+    let actualTimeTaken = 0
+    let timeFormat = 'HH:mm'
+    let iteration = 0
+    let noRouteFound = false
+    // || noRouteFound == false
 
-//     while(iteration != orderedPathList.length-1 && noRouteFound == false){
-//         let currentStation = orderedPathList[iteration]
-//         let nextStation = orderedPathList[iteration+1]
-//         let currentTrainCodeLetters = trainCodeList[currentStation].slice(0,2)
-//         let currentTrain = trainName[currentStation]
-//         let nextTrainCodeLetters = trainCodeList[nextStation].slice(0,2)
-//         let nextTrain = trainName[nextStation]
+    if(trainName[pathList[lastIndexPathList]] == trainName[pathList[lastIndexPathList-1]]){
+        orderedPathList.pop()
+    }
 
-//         switch(true){
-//             //Peak Period Case
-//             case currentTime > morningPeakPeriod1 && currentTime < morningPeakPeriod2 || (currentTime > eveningPeakPeriod1 && currentTime < eveningPeakPeriod2):{
-//                 let nonNightStations = ['NS','NE']
-//                                 if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && nonNightStations.includes(currentTrainCodeLetters)){
-//                     timeTaken += 2
-//                     //currentTime += 12
-//                 }
-//                 //Currently going through an interchange
-//                 if(currentTrain.includes(nextTrain)){
-//                     timeTaken += 5
-//                     //currentTime += 15
-//                 }
-//                 break
-//             }
-//             //Night Period Case
-//             case currentTime > nightTimePeriod1 && currentTime < nightTimePeriod2:{
-//                 let nonNightStations = ['CG','DT','CE']
-//                 if(nonNightStations.includes(currentTrainCodeLetters)){
-//                     console.log("No Route found to destination")
-//                     noRouteFound =true 
-//                 }
-//                 if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && currentTrainCodeLetters.includes('TE')){
-//                     timeTaken -= 2
-//                     //     Minus current time for TE lines in non-peak hours
-//                     //     currentTime += 8min
-//                 }
-//                 break
+    for(let i = 0 ;i <pathList.length - 1;i++ ){
+        let currentStation = pathList[i]
+        let nextStation = pathList[i+1]
+        let currentTrainCodeLetters = trainCodeList[currentStation].slice(0,2)
+        let currentTrain = trainName[currentStation]
+        let nextTrainCodeLetters = trainCodeList[nextStation].slice(0,2)
+        let nextTrain = trainName[nextStation]
 
-//             }
-//             //Non-Peak Period Case
-//             default:{
-//                 let noPeakTrainCode = ['DT','TE']
-//                 //Check if current train station code is the same as next train code letters. Check also with they are DT or TE line
-//                 if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && noPeakTrainCode.includes(currentTrainCodeLetters)){
-//                     timeTaken -= 2
-//                     //     Minus current time for DT and TE lines in non-peak hours
-//                     //     currentTime += 8
-//                 }
-//                 //Track current time
-//                 //currentTime += 10
-//                 break
-//             }
-//         }
-//     }
-// }
+        let dayOfWeek = currentTime.day()
+        let currentHour = currentTime.hour()
+
+        switch(true){
+            //Peak Period Case
+            case (currentTime.isBetween(moment('06:00',timeFormat),moment('09:00',timeFormat)) || currentTime.isBetween(moment('18:00',timeFormat),moment('21:00',timeFormat)) && (dayOfWeek !== 6) || (dayOfWeek  !== 0)):{
+                let peakStations = ['NS','NE']
+                if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && peakStations.includes(currentTrainCodeLetters)){
+                    actualTimeTaken += 12
+                    currentTime.add(12,'minutes')
+                    break
+                }
+                //Currently going through an interchange
+                if(currentTrain.includes(nextTrain)){
+                    actualTimeTaken += 15
+                    currentTime.add(15,'minutes')
+                    break
+                }
+                
+            }
+            //Night Period Case
+            case (currentHour > 22) && currentHour < 6:{
+                console.log('Entering night case with hour '+currentHour)
+                let nonNightStations = ['CG','DT','CE']
+                if(nonNightStations.includes(currentTrainCodeLetters)){
+                    // console.log("No Route found to destination")
+                    noRouteFound =true 
+                    break
+                }
+                if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && currentTrainCodeLetters.includes('TE')){
+                    actualTimeTaken += 8
+                    //Minus current time for TE lines in non-peak hours
+                    currentTime.add(8,'minutes')
+                    break
+                }
+                
+            }
+            //Non-Peak Period Case
+            default:{
+                let noPeakTrainCode = ['DT','TE']
+                //Check if current train station code is the same as next train code letters. Check also with they are DT or TE line
+                if(currentTrainCodeLetters.includes(nextTrainCodeLetters) && noPeakTrainCode.includes(currentTrainCodeLetters)){
+                    console.log('Entering off-peak case with hour '+currentHour)
+                    actualTimeTaken += 8
+                    currentTime.add(8,'minutes')
+                    break
+                }else{
+                    currentTime.add(10,'minutes')
+                    actualTimeTaken += 10 
+                    break
+                }
+                
+                 
+                               
+            }
+        }
+        console.log("Time:" +currentTime +' Index'+i + " " + actualTimeTaken);
+        // (`${i}, time taken passed`)
+    }
+
+    return console.log(actualTimeTaken)
+}
 
 
 // Function that implements Dijkstra's
@@ -265,10 +293,10 @@ function dijkstra(graph, src,target,V)
 
 async function driver(){
     await readCSV()
-    var matrix =  await createAdjMatrix(166,166)
-    var timeTaken = await dijkstra(matrix,79,128,166)
+    var matrix =  await createAdjMatrix(166)
+    var timeTaken = await dijkstra(matrix,53,68,166)
     printPath(pathListIndex)
-    // calculatimeTimeTaken()
+    calculatimeTimeTaken(pathListIndex,moment('2019-01-31T06:00'),150)
 }
 
 driver()

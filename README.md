@@ -44,7 +44,7 @@ Application was built using Node v16.4.2
 The application was built in node.js using libraries fast-csv for file parsing and moment.js for dateTime handling.
 
 1. Install node module packages with `npm i`
-2. Application can be run with command `node index.js`
+2. Application can be run with command `node index.js EW27 NE7 06:00`
 
 
 ## License

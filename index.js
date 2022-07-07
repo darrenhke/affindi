@@ -17,7 +17,7 @@ const pathListIndex = []
 
 var dist = new Array()
 var currentVertices = 0 
-var timeTaken = 0
+//var timeTaken = 0
 
 
 function readCSV(){
@@ -32,13 +32,10 @@ function readCSV(){
                 currentValue = trainMap.get(row.stationName)
                 trainMap.set(row.stationName, currentValue.concat(row.stationCode))
                 interMap.set(row.stationName, currentValue.concat(row.stationCode))
-                // console.log(interChangeIndex+' ' + row.stationName,' is an interchange connected via ',trainMap.get(row.stationName))
-                //Count the number of interchanges in Singapore
          }
         else{
                 trainMap.set(row.stationName,new Array(row.stationCode))
         }
-        // console.log(row)
     })
     .on('end', rowCount => {
         currentVertices = rowCount
@@ -48,7 +45,6 @@ function readCSV(){
     }
 )}
 
-//TODO: Create addition function argument dateTime to determine weight to use per edge
 // Helper Function to create adjacency matrix
  function createAdjMatrix(vertices){
     // console.log('Entry into createAdjMatrix func')
@@ -63,7 +59,7 @@ function readCSV(){
                 var previousVertice = trainCodeList[j-1]
                 var previousVerticeTrainCode = previousVertice.slice(0,2)
             }
-
+            //Check if there is adjacent train station in the next and exist
             if(trainCodeList[j+1]){
                 var nextVertice = trainCodeList[j+1]
                 var nextVerticeTrainCode = nextVertice.slice(0,2)
@@ -78,7 +74,7 @@ function readCSV(){
                 //TODO: To add switch-case to calculate weight of edge i.e current time period and current stationline
                 graph[i][j+1] = 10
             }
-            //TODO: To add switch-case to calculate weight of edge i.e current time period and current stationline, put all weight as 10 for base assignment
+            //Check if it current vertice is adjacent to an train intercahnge
             if(i===j && interMap.has(trainName[j])){
                 interchangeTrainCodes = Object.values(interMap.get(trainName[j])).filter(value => value != trainCodeList[j])
                 //   console.log('Type of interchangeTrainCodes '+typeof interchangeTrainCodes +" "+ interchangeTrainCodes,'Length of traincodes'+ interchangeTrainCodes.length)
@@ -86,15 +82,13 @@ function readCSV(){
                     //Need to check code
                     graph[i][trainCodeList.indexOf(interchangeTrainCodes[k])] =  10                   
                 }
-                // To assign value of interchange wait time
             }
         }
     }
      return graph
 }
 
-// A utility function to find the vertex with minimum distance value, from the set of vertices
-// not yet included in shortest path tree
+// A utility function to find the vertex with minimum distance value, from the set of vertices not yet included in shortest path tree
 function minDistance(dist,sptSet)
 {
 	// Initialize min value
@@ -112,10 +106,7 @@ function minDistance(dist,sptSet)
 	return min_index;
 }
 
-// Function that implements Dijkstra's
-// single source shortest path algorithm
-// for a graph represented using adjacency
-// matrix representation
+// Function that implements Dijkstra's single source shortest path algorithm for a graph represented using adjacency matrix representation
 function dijkstra(graph, source,target,V)
 {
     src = trainCodeList.indexOf(source)
@@ -123,16 +114,14 @@ function dijkstra(graph, source,target,V)
     dist = new Array(V);
 	let sptSet = new Array(V);
 	
-	// Initialize all distances as
-	// INFINITE and stpSet[] as false
+	// Initialize all distances as INFINITE and stpSet[] as false
 	for(let i = 0; i < V; i++)
 	{
 		dist[i] = Number.MAX_VALUE;
 		sptSet[i] = false;
 	}
 	
-	// Distance of source vertex
-	// from itself is always 0
+	// Distance of source vertex from itself is always 0
     parents[src] = -1
 	dist[src] = 0;
 	minDistanceFound = false
@@ -154,21 +143,21 @@ function dijkstra(graph, source,target,V)
 		}
 	}
 	// Print the constructed distance array
-	printSolution(dist,src,trgt);
+	return printSolution(dist,src,trgt);
 }
 
-// A utility function to print
-// the constructed distance array
+// A utility function to print the constructed distance array
 function printSolution(dist,src,target)
 {
     console.log(`\nTrain from ${trainName[src]} to ${trainName[target]}`)
-    timeTaken = dist[target]
+    // timeTaken = dist[target]
 	console.log("Path");
     getPath(target,parents)
     console.log('\n')
 }
 
-function getPath(currentVertex,parents,){
+//Recursive function to retrieve the source to end point base on station code
+function getPath(currentVertex,parents){
     if(currentVertex == -1){
         return;
     }
@@ -178,6 +167,7 @@ function getPath(currentVertex,parents,){
 
 }
 
+//Prints the train route from src to destination station
 function printPath(pathList){
     let orderedPathList = pathList.reverse()
 
@@ -202,21 +192,22 @@ function printPath(pathList){
     }   
 }
 
-//Utility function to calculate the time from src to destination station factoring peak/off-peak and night trains
-function calculatimeTimeTaken(pathList,srcTime,){
-    let pathLength = pathList.length
+//Function to calculate the time from src to destination station factoring peak/off-peak and night trains
+function calculatimeTimeTaken(pathList,srcTime){
+    let destinationPathList = pathList
+    let pathLength = destinationPathList.length
     let lastIndexPathList = pathLength - 1
     let actualTimeTaken = 0
     let timeFormat = 'HH:mm'
     let noRouteFound = false
     var currentTime = moment(srcTime,timeFormat)
-    // || noRouteFound == false
+    
 
     if(trainName[pathList[lastIndexPathList]] == trainName[pathList[lastIndexPathList-1]]){
-        orderedPathList.pop()
+        pathList.pop()
     }
 
-    for(let i = 0 ;i <pathList.length - 1;i++ ){
+    for(let i = 0 ;i <pathList.length - 1 ||  noRouteFound == true;i++ ){
         let currentStation = pathList[i]
         let nextStation = pathList[i+1]
         let currentTrainCodeLetters = trainCodeList[currentStation].slice(0,2)
@@ -247,8 +238,6 @@ function calculatimeTimeTaken(pathList,srcTime,){
             else if ((currentHour > 22) && (currentHour < 6)){1
                 let nonNightStations = ['CG','DT','CE']
                 if(nonNightStations.includes(currentTrainCodeLetters)){
-                    
-                    
                     console.log("No Route found to destination")
                     noRouteFound =true 
                     
@@ -278,8 +267,7 @@ function calculatimeTimeTaken(pathList,srcTime,){
 
                 }                           
             }
-    
-        // (`${i}, time taken passed`)
+
     }
 
     return console.log(`Time: ${actualTimeTaken} minutes`)
@@ -288,11 +276,17 @@ function calculatimeTimeTaken(pathList,srcTime,){
 
 
 async function driver(){
-    await readCSV()
-    var matrix =  await createAdjMatrix(166)
-    var timeTaken = await dijkstra(matrix,'CC21','DT14',166)
+    var args = process.argv.slice(2)
+    console.log(args[0])
+    let src = args[0].toUpperCase()
+    let dest = args[1].toUpperCase()
+    let time = args [2]
+
+    var vertices = await readCSV()
+    var matrix =  await createAdjMatrix(vertices)
+    dijkstra(matrix,src,dest,vertices)
     printPath(pathListIndex)
-    calculatimeTimeTaken(pathListIndex,'08:00')
+    calculatimeTimeTaken(pathListIndex,time)
 }
 
 driver()
